@@ -3,7 +3,7 @@ import Data.List.Extra hiding (union)
 import Data.Either
 import Data.Maybe
 -- import Data.List
-import Data.Set (toList, union, fromList, empty, Set, intersection)
+import Data.Set (member, toList, union, fromList, empty, Set, intersection)
 
 data Direction = V | H
     deriving Show
@@ -19,18 +19,32 @@ parse = fmap (fmap f . splitOn ",") . lines
  
 move (x, y) (direction, steps) = 
     case direction of
-      'R' -> ((x+steps, y), fromList [(x',y) | x' <- [x+1..x+steps]])
-      'L' -> ((x-steps, y), fromList [(x',y) | x' <- [x-steps..x-1]])
-      'U' -> ((x, y+steps), fromList [(x,y') | y' <- [y+1..y+steps]])
-      'D' -> ((x, y-steps), fromList [(x,y') | y' <- [y-steps..y-1]])
+      'R' -> ((x+steps, y), [(x',y) | x' <- [x+1..x+steps]])
+      'L' -> ((x-steps, y), [(x',y) | x' <- [x-steps..x-1]])
+      'U' -> ((x, y+steps), [(x,y') | y' <- [y+1..y+steps]])
+      'D' -> ((x, y-steps), [(x,y') | y' <- [y-steps..y-1]])
 
--- solve1 :: [[(Char, Int)]] -> [Set (Int, Int)]
-solve1 xs = minimum $ map distance $ cross $ fmap (snd . foldl f init) xs
-    where f (position, visited) x = let (newPosition, newVisited) = move position x in (newPosition , union newVisited visited)
-          init = ((0,0), empty)
-          distance (x,y) = abs x + abs y
-          cross [x,y] = toList $ intersection x y
-solve2 = undefined
+wirePath :: [(Char, Int)] -> [(Int, Int)]
+wirePath = snd . foldl f init
+    where f (position, visited) x = let (newPosition, newVisited) = move position x in (newPosition ,visited ++ newVisited)
+          init = ((0,0), [])
+
+-- wireIntersections :: [[(Int, Int)]] -> [(Int, Int)]
+wireIntersections paths = cross $ map fromList paths
+    where cross [x,y] = intersection x y
+
+solve1 = minimum . map distance . toList . wireIntersections . map wirePath
+    where distance (x,y) = abs x + abs y
+
+-- solve2 :: [(Char, Int)] -> [(Int, Int)]
+solve2 xs = 
+    let paths = map wirePath xs
+        intersections = wireIntersections paths
+        p x = member (snd x) intersections
+        ps =  map (zip [0..]) paths
+        [x,y] = map (filter p) ps
+        result = filter (\(_,a) -> any (\(_,b) -> a==b) x) y
+     in result
 
 main :: IO ()
 main = do
@@ -38,4 +52,4 @@ main = do
     let input' = parse input
     print $  (solve1 input')
     -- print $ solve1 input'
-    -- print $ solve2 input'
+    print $ solve2 input'
