@@ -13,9 +13,12 @@ parse graphType = foldr (M.unionWith (++)) M.empty . fmap (f graphType . splitOn
     where f Directed   [n1, n2] = M.singleton n1 [n2]
           f Undirected [n1, n2] = M.fromList [(n1, [n2]), (n2, [n1])]
 
+getEdges :: Node -> Graph -> [Node]
+getEdges node graph = concat $ M.lookup node graph
+
 -- Part one
 orbitCountChecksum :: Int -> Graph -> Node -> Int
-orbitCountChecksum acc graph node = maybe acc f $ M.lookup node graph
+orbitCountChecksum acc graph node = f $ getEdges node graph
     where f = (+ acc) . sum . fmap (orbitCountChecksum (acc + 1) graph)
 
 -- Part two
@@ -26,8 +29,8 @@ distanceToSanta previous graph count node  =
     else 
         sum $ distanceToSanta node graph (count+1) <$> edges
     where 
-        edges = filter (/= previous) . concat $ M.lookup node graph
-        isGoal = any ("SAN" ==) . concat $ M.lookup node graph
+        edges = filter (/= previous) $ getEdges node graph
+        isGoal = any ("SAN" ==) $ getEdges node graph
 
 main :: IO ()
 main = do
