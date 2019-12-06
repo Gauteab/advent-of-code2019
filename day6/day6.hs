@@ -1,23 +1,36 @@
 import Data.List.Extra (splitOn)
 import Data.Map (Map)
+import Data.Set (Set)
 import qualified Data.Map as M 
+import qualified Data.Set as S 
 
 type Node = String
 type Graph = Map Node [Node]
+data GraphType = Directed | Undirected
 
-parse :: String -> Graph
-parse = foldr (M.unionWith (++)) M.empty . fmap (f . splitOn ")") . lines
-    where f [key, value] = M.singleton key [value]
+parse :: GraphType -> String -> Graph
+parse graphType = foldr (M.unionWith (++)) M.empty . fmap (f graphType . splitOn ")") . lines
+    where f Directed   [n1, n2] = M.singleton n1 [n2]
+          f Undirected [n1, n2] = M.fromList [(n1, [n2]), (n2, [n1])]
 
-orbits :: Graph -> Int
-orbits = undefined
+-- Part one
+orbitCountChecksum :: Int -> Graph -> Node -> Int
+orbitCountChecksum acc graph node = maybe acc f $ M.lookup node graph
+    where f = (+ acc) . sum . fmap (orbitCountChecksum (acc + 1) graph)
 
-depthFrom :: Int -> Graph -> Node -> Int
-depthFrom acc graph node = maybe acc f $ M.lookup node graph
-    where f = (+ acc) . sum . fmap (depthFrom (acc + 1) graph)
+-- Part two
+distanceToSanta :: Node -> Graph -> Int -> Node -> Int
+distanceToSanta previous graph count node  = 
+    if isGoal then 
+        count - 1 
+    else 
+        sum $ distanceToSanta node graph (count+1) <$> edges
+    where 
+        edges = filter (/= previous) . concat $ M.lookup node graph
+        isGoal = any ("SAN" ==) . concat $ M.lookup node graph
 
 main :: IO ()
 main = do
     input <- readFile "input"
-    print $ parse input
-    print $ depthFrom 0 (parse input) "COM"
+    print $ orbitCountChecksum 0 (parse Directed input) "COM"
+    print $ distanceToSanta "YOU" (parse Undirected input) 0 "YOU"
